@@ -91,6 +91,18 @@ const uint8_t __UART__::read(void)
     return (byte);
 }
 
+void __UART__::read(uint8_t* n, const uint8_t size)
+{
+    for (uint8_t i = 0; i < size;)
+        if (this->available())
+            n[i++] = this->read();
+}
+
+void __UART__::read(void* n, const uint8_t size)
+{
+    this->read((uint8_t*)n, size);
+}
+
 void __UART__::write(const uint8_t n)
 {
     const uint8_t head = (this->txHead + 1) % UART_TX_BUFFER_SIZE;

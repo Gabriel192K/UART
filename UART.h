@@ -27,6 +27,8 @@ class __UART__
         void          flush         (void);
         const uint8_t isTransmitting(void);
         const uint8_t read          (void);
+        void          read          (uint8_t* n, const uint8_t size);
+        void          read          (void* n, const uint8_t size);
         void          write         (const uint8_t n);
         void          write         (const uint8_t* n, const uint8_t size);
         void          write         (const void* n, const uint8_t size);
