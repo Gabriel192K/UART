@@ -11,5 +11,5 @@ UART library for handling UART communication
 - Able to read or write any type of data sending everything byte by byte onto the UART bus
 
 ## Tested on
-- ATmega328P @16MHz with `Arduino IDE` & `Microchip Studio IDE` @115200 bps
-- ATmega328PB @16MHz with `Arduino IDE` & `Microchip Studio IDE` @115200 bps
+- ATmega328P @16MHz with `Arduino IDE` & `Microchip Studio IDE` @115200bps
+- ATmega328PB @16MHz with `Arduino IDE` & `Microchip Studio IDE` @115200bps
