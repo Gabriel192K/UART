@@ -1,6 +1,21 @@
 /* Dependencies */
 #include "UART.h"
 
+/*!
+ * @brief  __UART__ constructor
+ * @param  ubrrh
+ *         The UART baudrate high address
+ * @param  ubrrl
+ *         The UART baudrate low address
+ * @param  ucsra
+ *         The UART control and status register A address
+ * @param  ucsrb
+ *         The UART control and status register B address
+ * @param  ucsrc
+ *         The UART control and status register C address
+ * @param  udr
+ *         The UART data register address
+ */
 __UART__::__UART__(volatile uint8_t* ubrrh, \
                    volatile uint8_t* ubrrl, \
                    volatile uint8_t* ucsra, \
@@ -16,6 +31,9 @@ __UART__::__UART__(volatile uint8_t* ubrrh, \
     this->udr = udr;
 }
 
+/*!
+ * @brief  GPIO destructor
+ */
 __UART__::~__UART__()
 {
     this->ubrrh = NULL;
@@ -26,6 +44,12 @@ __UART__::~__UART__()
     this->udr = NULL;
 }
 
+/*!
+ * @brief  Starting UART bus implementation
+ * @param  baudrate
+ *         The baudrate of UART bus
+ * @return False if already started this UART bus, otherwise true
+ */
 const uint8_t __UART__::begin(const uint32_t baudrate)
 {
     if (this->began)
@@ -55,6 +79,10 @@ const uint8_t __UART__::begin(const uint32_t baudrate)
     return (1);
 }
 
+/*!
+ * @brief  Checking how many bytes the RX circular buffer has
+ * @return The number of bytes the RX circular buffer has
+ */
 const uint8_t __UART__::available(void)
 {
     uint8_t bytes = 0;
@@ -63,12 +91,19 @@ const uint8_t __UART__::available(void)
     return (bytes);
 }
 
+/*!
+ * @brief  Flushing the RX circular buffer
+ */
 void __UART__::flush(void)
 {
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         this->rxHead = this->rxTail;
 }
 
+/*!
+ * @brief  Checking if the UDRE interrupt is enabled aka is transmitting
+ * @return Flag if UDRE interrupt is enabled
+ */
 const uint8_t __UART__::isTransmitting(void)
 {
     #if defined(__AVR_ATmega328P__) || \
@@ -77,6 +112,10 @@ const uint8_t __UART__::isTransmitting(void)
     #endif
 }
 
+/*!
+ * @brief  Reading a byte from RX circular buffer
+ * @return Byte from RX circular buffer
+ */
 const uint8_t __UART__::read(void)
 {
     if (this->rxHead == this->rxTail) // Check if RX buffer is empty
@@ -91,6 +130,13 @@ const uint8_t __UART__::read(void)
     return (byte);
 }
 
+/*!
+ * @brief  Reading an amount of bytes from RX circular buffer into an array
+ * @param  n
+ *         The array of bytes to be filled
+ * @param  size
+ *         The size of the array of bytes to be filled
+ */
 void __UART__::read(uint8_t* n, const uint8_t size)
 {
     for (uint8_t i = 0; i < size;)
@@ -98,11 +144,23 @@ void __UART__::read(uint8_t* n, const uint8_t size)
             n[i++] = this->read();
 }
 
+/*!
+ * @brief  Reading an amount of bytes from RX circular buffer into a type-unknown zone of memory
+ * @param  n
+ *         The type-unknown zone of memory to be filled
+ * @param  size
+ *         The size of the type-unknown zone of memory to be filled
+ */
 void __UART__::read(void* n, const uint8_t size)
 {
     this->read((uint8_t*)n, size);
 }
 
+/*!
+ * @brief  Writing a byte into the TX circular buffer
+ * @param  n
+ *         The byte to be written into the TX circular buffer
+ */
 void __UART__::write(const uint8_t n)
 {
     const uint8_t head = (this->txHead + 1) % UART_TX_BUFFER_SIZE;
@@ -118,17 +176,35 @@ void __UART__::write(const uint8_t n)
 
 }
 
+/*!
+ * @brief  Writing an amount of bytes from an array of bytes into the TX circular buffer
+ * @param  n
+ *         The array of bytes to be written into the TX circular buffer
+ * @param  size
+ *         The size of the array of bytes to be written into the TX circular buffer
+ */
 void __UART__::write(const uint8_t* n, const uint8_t size)
 {
     for (const uint8_t* p = n; p < (n + size); p++)
         this->write(*p);
 }
 
+/*!
+ * @brief  Writing an amount of bytes from a type-unknown zone of memory into the TX circular buffer
+ * @param  n
+ *         The a type-unknown zone of memory to be written into the TX circular buffer
+ * @param  size
+ *         The size of the a type-unknown zone of memory to be written into the TX circular buffer
+ */
 void __UART__::write(const void* n, const uint8_t size)
 {
     this->write((const uint8_t*)n, size);
 }
 
+/*!
+ * @brief  Ending UART bus implementation
+ * @return False if already ended this UART bus, otherwise true
+ */
 const uint8_t __UART__::end(void)
 {
     if (!this->began)
@@ -152,12 +228,18 @@ const uint8_t __UART__::end(void)
     return (1);
 }
 
+/*!
+ * @brief  The RX ISR wrapper that will run iside the RX ISR
+ */
 void __UART__::isrRX(void)
 {
     this->rxBuffer[this->rxHead] = *this->udr;
     this->rxHead = (this->rxHead + 1) % UART_RX_BUFFER_SIZE;
 }
 
+/*!
+ * @brief  The UDRE ISR wrapper that will run iside the UDRE ISR
+ */
 void __UART__::isrUDRE(void)
 {
     if (this->txHead != this->txTail)
