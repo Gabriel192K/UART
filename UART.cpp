@@ -1,20 +1,14 @@
 /* Dependencies */
 #include "UART.h"
 
-/*!
- * @brief  __UART0__ constructor
- * @param  ubrrh
- *         The UART baudrate high address
- * @param  ubrrl
- *         The UART baudrate low address
- * @param  ucsra
- *         The UART control and status register A address
- * @param  ucsrb
- *         The UART control and status register B address
- * @param  ucsrc
- *         The UART control and status register C address
- * @param  udr
- *         The UART data register address
+/**
+ * @brief Constructor: Initializes the UART control, status, and data registers
+ * @param ubrrh Pointer to the UART baud rate register high
+ * @param ubrrl Pointer to the UART baud rate register low
+ * @param ucsra Pointer to the UART control and status register A
+ * @param ucsrb Pointer to the UART control and status register B
+ * @param ucsrc Pointer to the UART control and status register C
+ * @param udr   Pointer to the UART data register
  */
 __UART__::__UART__(volatile uint8_t* ubrrh, \
                    volatile uint8_t* ubrrl, \
@@ -31,8 +25,8 @@ __UART__::__UART__(volatile uint8_t* ubrrh, \
     this->udr = udr;
 }
 
-/*!
- * @brief  __UART0__ destructor
+/**
+ * @brief Destructor: Resets the register pointers to NULL
  */
 __UART__::~__UART__()
 {
@@ -44,11 +38,10 @@ __UART__::~__UART__()
     this->udr = NULL;
 }
 
-/*!
- * @brief  Starting UART bus implementation
- * @param  baudrate
- *         The baudrate of UART bus
- * @return False if already started this UART bus, otherwise true
+/**
+ * @brief Begins UART communication by setting the appropriate bits in the control registers
+ * @param baudrate The baud rate to set
+ * @return 1 if successful, 0 otherwise
  */
 const uint8_t __UART__::begin(const uint32_t baudrate)
 {
@@ -57,9 +50,9 @@ const uint8_t __UART__::begin(const uint32_t baudrate)
 
     this->began = 1;
 
-    sei(); // Turn on global interrupts
+    sei(); /*!< Enable global interrupts */
 
-    uint16_t prescale = (F_CPU / 4 / baudrate - 1) / 2;
+    uint16_t prescale = (F_CPU / 4 / baudrate - 1) / 2; /*!< Calculate the prescale value */
     
     #if defined(__AVR_ATmega328__) || \
         defined(__AVR_ATmega328P__) || \
@@ -72,22 +65,22 @@ const uint8_t __UART__::begin(const uint32_t baudrate)
     else
         *this->ucsra |= (1 << U2X0);
     
-    *this->ubrrh = (uint8_t)(prescale >> 8); // Write <LSB> of the prescale
-    *this->ubrrl = (uint8_t)prescale;        //  Write <MSB> of the prescale
+    *this->ubrrh = (uint8_t)(prescale >> 8); /*!< Write <LSB> of the prescale */
+    *this->ubrrl = (uint8_t)prescale;        /*!< Write <MSB> of the prescale */
     *this->ucsrc |= (1 << UCSZ01) | \
-                    (1 << UCSZ00);           // 8 bit data transmission size
+                    (1 << UCSZ00);           /*!< Set the data frame format to 8-bit */
     *this->ucsrb |= (1 << RXEN0) | \
                     (1 << RXCIE0) | \
-                    (1 << TXEN0);            // Enable <RX>, <RX-IRQ>, <TX>
+                    (1 << TXEN0);            /*!< Enable RX, RX ISR, TX */
     #else
         #error "Can not config UART bus in begin()"
     #endif
     return (1);
 }
 
-/*!
- * @brief  Checking how many bytes the RX circular buffer has
- * @return The number of bytes the RX circular buffer has
+/**
+ * @brief Checks if data is available to read
+ * @return 1 if data is available, 0 otherwise
  */
 const uint8_t __UART__::available(void)
 {
@@ -97,8 +90,8 @@ const uint8_t __UART__::available(void)
     return (bytes);
 }
 
-/*!
- * @brief  Flushing the RX circular buffer
+/**
+ * @brief Clears the receive buffer
  */
 void __UART__::flush(void)
 {
@@ -106,9 +99,9 @@ void __UART__::flush(void)
         this->rxHead = this->rxTail;
 }
 
-/*!
- * @brief  Checking if the UDRE interrupt is enabled aka is transmitting
- * @return Flag if UDRE interrupt is enabled
+/**
+ * @brief Checks if UART is transmitting
+ * @return 1 if transmitting, 0 otherwise
  */
 const uint8_t __UART__::isTransmitting(void)
 {
@@ -121,13 +114,13 @@ const uint8_t __UART__::isTransmitting(void)
     #endif
 }
 
-/*!
- * @brief  Reading a byte from RX circular buffer
- * @return Byte from RX circular buffer
+/**
+ * @brief Reads a single byte from the receive buffer
+ * @return The byte read
  */
 const uint8_t __UART__::read(void)
 {
-    if (this->rxHead == this->rxTail) // Check if RX buffer is empty
+    if (this->rxHead == this->rxTail)
         return (0);
 	
 	uint8_t byte = 0;
@@ -139,12 +132,10 @@ const uint8_t __UART__::read(void)
     return (byte);
 }
 
-/*!
- * @brief  Reading an amount of bytes from RX circular buffer into an array
- * @param  n
- *         The array of bytes to be filled
- * @param  size
- *         The size of the array of bytes to be filled
+/**
+ * @brief Reads a byte array from the receive buffer
+ * @param n Pointer to the byte array
+ * @param size The size of the byte array
  */
 void __UART__::read(uint8_t* n, const uint8_t size)
 {
@@ -153,22 +144,19 @@ void __UART__::read(uint8_t* n, const uint8_t size)
             n[i++] = this->read();
 }
 
-/*!
- * @brief  Reading an amount of bytes from RX circular buffer into a type-unknown zone of memory
- * @param  n
- *         The type-unknown zone of memory to be filled
- * @param  size
- *         The size of the type-unknown zone of memory to be filled
+/**
+ * @brief Reads bytes from the receive buffer into a generic pointer
+ * @param n Pointer to the destination memory location
+ * @param size The number of bytes to read
  */
 void __UART__::read(void* n, const uint8_t size)
 {
     this->read((uint8_t*)n, size);
 }
 
-/*!
- * @brief  Writing a byte into the TX circular buffer
- * @param  n
- *         The byte to be written into the TX circular buffer
+/**
+ * @brief Writes a single byte to the transmit buffer
+ * @param n The byte to write
  */
 void __UART__::write(const uint8_t n)
 {
@@ -187,12 +175,10 @@ void __UART__::write(const uint8_t n)
     #endif
 }
 
-/*!
- * @brief  Writing an amount of bytes from an array of bytes into the TX circular buffer
- * @param  n
- *         The array of bytes to be written into the TX circular buffer
- * @param  size
- *         The size of the array of bytes to be written into the TX circular buffer
+/**
+ * @brief Writes a byte array to the transmit buffer
+ * @param n Pointer to the byte array
+ * @param size The size of the byte array
  */
 void __UART__::write(const uint8_t* n, const uint8_t size)
 {
@@ -200,32 +186,31 @@ void __UART__::write(const uint8_t* n, const uint8_t size)
         this->write(*p);
 }
 
-/*!
- * @brief  Writing an amount of bytes from a type-unknown zone of memory into the TX circular buffer
- * @param  n
- *         The type-unknown zone of memory to be written into the TX circular buffer
- * @param  size
- *         The size of the a type-unknown zone of memory to be written into the TX circular buffer
+/**
+ * @brief Writes bytes from a generic pointer to the transmit buffer
+ * @param n Pointer to the source memory location
+ * @param size The number of bytes to write
  */
 void __UART__::write(const void* n, const uint8_t size)
 {
     this->write((const uint8_t*)n, size);
 }
 
-/*!
- * @brief  Writing an ASCII format byte into the TX circular buffer
- * @param  c
- *         The ASCII format byte to be written into the TX circular buffer
+/**
+ * @brief Prints a single character to the UART.
+ * @param c Character to be transmitted.
+ * @details Converts the char to uint8_t and writes it to the UART using write().
  */
 void __UART__::print(const char c)
 {
     this->write((const uint8_t)c);
 }
 
-/*!
- * @brief  Writing an ASCII format array of bytes into the TX circular buffer
- * @param  s
- *         The ASCII format byte array to be written into the TX circular buffer
+/**
+ * @brief Prints a null-terminated string to the UART.
+ * @param s Pointer to the null-terminated string to be transmitted.
+ * @details Iterates through each character of the string until the null terminator is reached,
+ *          converting each char to uint8_t and writing it to the UART using write().
  */
 void __UART__::print(const char* s)
 {
@@ -233,10 +218,14 @@ void __UART__::print(const char* s)
         this->write((const uint8_t)*s++);
 }
 
-/*!
- * @brief  Writing an ASCII format array of bytes into the TX circular buffer stored into flash memory
- * @param  s
- *         The ASCII format byte array to be written into the TX circular buffer stored into flash memory
+/**
+ * @brief Prints a string stored in program memory (Flash) to the UART.
+ * @param s Reference to a FlashStringHelper object containing the string in program memory.
+ * @details Reads the string byte by byte from program memory using pgm_read_byte(),
+ *          iterating until the null terminator is reached. Each byte is converted
+ *          to uint8_t and written to the UART using write().
+ * @note This method is specific for AVR microcontrollers where strings can be stored
+ *       in program memory (Flash) to save RAM.
  */
 void __UART__::print(const FlashStringHelper &s)
 {
@@ -245,10 +234,15 @@ void __UART__::print(const FlashStringHelper &s)
         this->write((const uint8_t)pgm_read_byte(ptr++));
 }
 
-/*!
- * @brief  Writing an ASCII format byte into the TX circular buffer
- * @param  n
- *         The ASCII format byte to be written into the TX circular buffer
+/**
+ * @brief Prints an unsigned 8-bit integer to the UART as ASCII digits.
+ * @param n The uint8_t value to be printed (range 0-255).
+ * @details Converts the number to ASCII digits by:
+ *          - First printing hundreds digit if n > 99
+ *          - Then printing tens digit if n > 9
+ *          - Always printing ones digit
+ *          Each digit is converted to ASCII by adding '0' offset.
+ * @note Does not print leading zeros.
  */
 void __UART__::print(const uint8_t n)
 {
@@ -257,10 +251,17 @@ void __UART__::print(const uint8_t n)
     this->print((const char)((n % 10) + '0'));
 }
 
-/*!
- * @brief  Writing an ASCII format word into the TX circular buffer
- * @param  n
- *         The ASCII format word to be written into the TX circular buffer
+/**
+ * @brief Prints an unsigned 16-bit integer to the UART as ASCII digits.
+ * @param n The uint16_t value to be printed (range 0-65535).
+ * @details Converts the number to ASCII digits by:
+ *          - First printing ten thousands digit if n > 9999
+ *          - Then thousands digit if n > 999
+ *          - Then hundreds digit if n > 99
+ *          - Then tens digit if n > 9
+ *          - Always printing ones digit
+ *          Each digit is converted to ASCII by adding '0' offset.
+ * @note Does not print leading zeros.
  */
 void __UART__::print(const uint16_t n)
 {
@@ -271,10 +272,22 @@ void __UART__::print(const uint16_t n)
     this->print((const char)((n % 10) + '0'));
 }
 
-/*!
- * @brief  Writing an ASCII format dword into the TX circular buffer
- * @param  n
- *         The ASCII format dword to be written into the TX circular buffer
+/**
+ * @brief Prints an unsigned 32-bit integer to the UART as ASCII digits.
+ * @param n The uint32_t value to be printed (range 0-4294967295).
+ * @details Converts the number to ASCII digits by sequentially checking and printing:
+ *          - Billions digit if n > 999999999
+ *          - Hundred millions digit if n > 99999999
+ *          - Ten millions digit if n > 9999999
+ *          - Millions digit if n > 999999
+ *          - Hundred thousands digit if n > 99999
+ *          - Ten thousands digit if n > 9999
+ *          - Thousands digit if n > 999
+ *          - Hundreds digit if n > 99
+ *          - Tens digit if n > 9
+ *          - Always printing ones digit
+ *          Each digit is converted to ASCII by adding '0' offset.
+ * @note Does not print leading zeros.
  */
 void __UART__::print(const uint32_t n)
 {
@@ -290,10 +303,15 @@ void __UART__::print(const uint32_t n)
     this->print((const char)((n % 10) + '0'));
 }
 
-/*!
- * @brief  Writing an signed ASCII format byte into the TX circular buffer
- * @param  n
- *         The signed ASCII format byte to be written into the TX circular buffer
+/**
+ * @brief Prints a signed 8-bit integer to the UART as ASCII digits.
+ * @param n The int8_t value to be printed (range -128 to 127).
+ * @details If the number is negative:
+ *          - First prints a minus sign
+ *          - Converts to positive by negation
+ *          - Calls print(uint8_t) to handle the digit conversion
+ *          If positive, directly calls print(uint8_t).
+ * @note Uses print(uint8_t) internally for the actual digit conversion.
  */
 void __UART__::print(const int8_t n)
 {
@@ -306,11 +324,16 @@ void __UART__::print(const int8_t n)
         this->print((const uint8_t)n);
 }
 
-/*!
- * @brief  Writing an signed ASCII format word into the TX circular buffer
- * @param  n
- *         The signed ASCII format word to be written into the TX circular buffer
- */
+/**
+* @brief Prints a signed 16-bit integer to the UART as ASCII digits.
+* @param n The int16_t value to be printed (range -32768 to 32767).
+* @details If the number is negative:
+*          - First prints a minus sign
+*          - Converts to positive by negation
+*          - Calls print(uint16_t) to handle the digit conversion
+*          If positive, directly calls print(uint16_t).
+* @note Uses print(uint16_t) internally for the actual digit conversion.
+*/
 void __UART__::print(const int16_t n)
 {
     if (n < 0)
@@ -322,10 +345,15 @@ void __UART__::print(const int16_t n)
         this->print((const uint16_t)n);
 }
 
-/*!
- * @brief  Writing an signed ASCII format dword into the TX circular buffer
- * @param  n
- *         The signed ASCII format dword to be written into the TX circular buffer
+/**
+ * @brief Prints a signed 32-bit integer to the UART as ASCII digits.
+ * @param n The int32_t value to be printed (range -2,147,483,648 to 2,147,483,647).
+ * @details If the number is negative:
+ *          - First prints a minus sign ('-') using write().
+ *          - Converts the number to positive by negation (handling the edge case of INT32_MIN).
+ *          - Calls print(uint32_t) to handle the digit conversion.
+ *          If positive, directly calls print(uint32_t).
+ * @note Uses print(uint32_t) internally for the actual digit conversion.
  */
 void __UART__::print(const int32_t n)
 {
@@ -338,20 +366,28 @@ void __UART__::print(const int32_t n)
         this->print((const uint32_t)n);
 }
 
-/*!
- * @brief  Writing an ASCII format "new line" byte into the TX circular buffer
- * @param  c
- *         The ASCII format "new line" byte to be written into the TX circular buffer
+/**
+ * @brief Prints a newline character to the UART.
+ * @details Sends the newline character ('\n') to the UART using write().
+ *          This moves the cursor to the beginning of the next line 
+ *          in terminal displays or serial monitors.
+ * @note Assumes write() sends a single character to the UART output.
+ *       Some systems may require an additional carriage return ('\r') 
+ *       for proper line formatting (e.g., "\r\n").
  */
 void __UART__::println(void)
 {
     this->write((const uint8_t)'\n');
 }
 
-/*!
- * @brief  Writing an ASCII format byte followed by an ASCII format "new line" byte into the TX circular buffer 
- * @param  c
- *         The ASCII format byte followed by an ASCII format "new line" byte to be written into the TX circular buffer
+/**
+ * @brief Prints a single character followed by a newline to the UART.
+ * @param c The character to be printed.
+ * @details Sends the character 'c' to the UART using write(), 
+ *          then calls println() to print a newline character ('\n').
+ *          This ensures the output moves to the next line after the character.
+ * @note Assumes write() sends a single character to the UART output.
+ *       The newline format is '\n'; some systems may require "\r\n" for proper line breaks.
  */
 void __UART__::println(const char c)
 {
@@ -359,10 +395,14 @@ void __UART__::println(const char c)
     this->println();
 }
 
-/*!
- * @brief  Writing an ASCII format array of bytes followed by an ASCII format "new line" byte into the TX circular buffer
- * @param  s
- *         The ASCII format byte array followed by an ASCII format "new line" byte to be written into the TX circular buffer
+/**
+ * @brief Prints a null-terminated string followed by a newline to the UART.
+ * @param s Pointer to the null-terminated string to be printed.
+ * @details Iterates through the string, sending each character to the UART using write().
+ *          Continues until the null terminator ('\0') is reached, indicating the end of the string.
+ *          After printing the string, calls println() to print a newline character ('\n').
+ * @note Assumes write() sends a single character to the UART output.
+ *       The newline format is '\n'; some systems may require "\r\n" for proper line breaks.
  */
 void __UART__::println(const char* s)
 {
@@ -371,10 +411,16 @@ void __UART__::println(const char* s)
     this->println();
 }
 
-/*!
- * @brief  Writing an ASCII format array of bytes followed by an ASCII format "new line" byte into the TX circular buffer stored into flash memory
- * @param  s
- *         The ASCII format byte array followed by an ASCII format "new line" byte to be written into the TX circular buffer stored into flash memory
+/**
+ * @brief Prints a string stored in flash memory followed by a newline to the UART.
+ * @param s Reference to a FlashStringHelper object representing the flash-stored string.
+ * @details Retrieves a pointer to the flash-stored string using s.get().
+ *          Iterates through the string, reading each byte from flash memory with pgm_read_byte().
+ *          Sends each byte to the UART using write() until a null terminator ('\0') is encountered.
+ *          After printing the string, calls println() to print a newline character ('\n').
+ * @note Assumes write() sends a single character to the UART output.
+ *       The newline format is '\n'; some systems may require "\r\n" for proper line breaks.
+ *       This is optimized for platforms like AVR, where strings are stored in program memory.
  */
 void __UART__::println(const FlashStringHelper &s)
 {
@@ -384,10 +430,13 @@ void __UART__::println(const FlashStringHelper &s)
     this->println();
 }
 
-/*!
- * @brief  Writing an ASCII format byte followed by an ASCII format "new line" byte into the TX circular buffer
- * @param  n
- *         The ASCII format byte followed by an ASCII format "new line" byte to be written into the TX circular buffer
+/**
+ * @brief Prints an unsigned 8-bit integer followed by a newline to the UART.
+ * @param n The uint8_t value to be printed (range 0 to 255).
+ * @details Calls print(uint8_t) to convert and send the numeric value as ASCII digits to the UART.
+ *          After printing the number, calls println() to print a newline character ('\n').
+ * @note Assumes print(uint8_t) handles the conversion of the number to ASCII digits.
+ *       The newline format is '\n'; some systems may require "\r\n" for proper line breaks.
  */
 void __UART__::println(const uint8_t n)
 {
@@ -395,10 +444,13 @@ void __UART__::println(const uint8_t n)
     this->println();
 }
 
-/*!
- * @brief  Writing an ASCII format word followed by an ASCII format "new line" byte into the TX circular buffer
- * @param  n
- *         The ASCII format word followed by an ASCII format "new line" byte to be written into the TX circular buffer
+/**
+ * @brief Prints an unsigned 16-bit integer followed by a newline to the UART.
+ * @param n The uint16_t value to be printed (range 0 to 65535).
+ * @details Calls print(uint16_t) to convert and send the numeric value as ASCII digits to the UART.
+ *          After printing the number, calls println() to print a newline character ('\n').
+ * @note Assumes print(uint16_t) handles the conversion of the number to ASCII digits.
+ *       The newline format is '\n'; some systems may require "\r\n" for proper line breaks.
  */
 void __UART__::println(const uint16_t n)
 {
@@ -406,10 +458,13 @@ void __UART__::println(const uint16_t n)
     this->println();
 }
 
-/*!
- * @brief  Writing an ASCII format dword followed by an ASCII format "new line" byte into the TX circular buffer
- * @param  n
- *         The ASCII format dword followed by an ASCII format "new line" byte to be written into the TX circular buffer
+/**
+ * @brief Prints an unsigned 32-bit integer followed by a newline to the UART.
+ * @param n The uint32_t value to be printed (range 0 to 4294967295).
+ * @details Calls print(uint32_t) to convert and send the numeric value as ASCII digits to the UART.
+ *          After printing the number, calls println() to print a newline character ('\n').
+ * @note Assumes print(uint32_t) handles the conversion of the number to ASCII digits.
+ *       The newline format is '\n'; some systems may require "\r\n" for proper line breaks.
  */
 void __UART__::println(const uint32_t n)
 {
@@ -417,10 +472,15 @@ void __UART__::println(const uint32_t n)
     this->println();
 }
 
-/*!
- * @brief  Writing an signed ASCII format byte followed by an ASCII format "new line" byte into the TX circular buffer
- * @param  n
- *         The signed ASCII format byte followed by an ASCII format "new line" byte to be written into the TX circular buffer
+/**
+ * @brief Prints a signed 8-bit integer followed by a newline to the UART.
+ * @param n The int8_t value to be printed (range -128 to 127).
+ * @details Calls print(int8_t) to convert and send the numeric value as ASCII digits to the UART.
+ *          Handles negative numbers with a minus sign ('-') if implemented in print().
+ *          After printing the number, calls println() to print a newline character ('\n').
+ * @note Assumes print(int8_t) handles the conversion of the number to ASCII digits,
+ *       including proper handling of negative values.
+ *       The newline format is '\n'; some systems may require "\r\n" for proper line breaks.
  */
 void __UART__::println(const int8_t n)
 {
@@ -428,10 +488,15 @@ void __UART__::println(const int8_t n)
     this->println();
 }
 
-/*!
- * @brief  Writing an signed ASCII format word followed by an ASCII format "new line" byte into the TX circular buffer
- * @param  n
- *         The signed ASCII format word followed by an ASCII format "new line" byte to be written into the TX circular buffer
+/**
+ * @brief Prints a signed 16-bit integer followed by a newline to the UART.
+ * @param n The int16_t value to be printed (range -32,768 to 32,767).
+ * @details Calls print(int16_t) to convert and send the numeric value as ASCII digits to the UART.
+ *          Handles negative numbers with a minus sign ('-') if implemented in print().
+ *          After printing the number, calls println() to print a newline character ('\n').
+ * @note Assumes print(int16_t) handles the conversion of the number to ASCII digits,
+ *       including proper handling of negative values.
+ *       The newline format is '\n'; some systems may require "\r\n" for proper line breaks.
  */
 void __UART__::println(const int16_t n)
 {
@@ -439,10 +504,15 @@ void __UART__::println(const int16_t n)
     this->println();
 }
 
-/*!
- * @brief  Writing an signed ASCII format dword followed by an ASCII format "new line" byte into the TX circular buffer
- * @param  n
- *         The signed ASCII format dword followed by an ASCII format "new line" byte to be written into the TX circular buffer
+/**
+ * @brief Prints a signed 32-bit integer followed by a newline to the UART.
+ * @param n The int32_t value to be printed (range -2,147,483,648 to 2,147,483,647).
+ * @details Calls print(int32_t) to convert and send the numeric value as ASCII digits to the UART.
+ *          Handles negative numbers with a minus sign ('-') if implemented in print().
+ *          After printing the number, calls println() to print a newline character ('\n').
+ * @note Assumes print(int32_t) handles the conversion of the number to ASCII digits,
+ *       including proper handling of negative values.
+ *       The newline format is '\n'; some systems may require "\r\n" for proper line breaks.
  */
 void __UART__::println(const int32_t n)
 {
@@ -450,9 +520,15 @@ void __UART__::println(const int32_t n)
     this->println();
 }
 
-/*!
- * @brief  Ending UART bus implementation
- * @return False if already ended this UART bus, otherwise true
+/**
+ * @brief Disables the UART communication and releases associated resources.
+ * @details If the UART has been initialized (this->began is true), this function disables the UART.
+ *          It first waits for any ongoing transmission to complete, using `isTransmitting()`.
+ *          It then flushes the transmission buffer, effectively stopping any buffered data from being sent.
+ *          For AVR-based systems (e.g., ATmega328), this function clears control registers and disables the UART.
+ *          If the system is not supported (other than AVR-based), it throws an error.
+ * @return Returns 1 if UART was successfully disabled, 0 if UART was not started.
+ * @note This function is specific to AVR architectures. If used on other platforms, it may result in a compile-time error.
  */
 const uint8_t __UART__::end(void)
 {
@@ -480,8 +556,13 @@ const uint8_t __UART__::end(void)
     return (1);
 }
 
-/*!
- * @brief  The RX ISR wrapper that will run iside the RX ISR
+/**
+ * @brief ISR (Interrupt Service Routine) for receiving data on the UART.
+ * @details This function is triggered by the UART receive interrupt. It reads the incoming byte from the UART data register (UDR) 
+ *          and stores it in the receive buffer (`rxBuffer`). The buffer index (`rxHead`) is then incremented in a circular manner 
+ *          using modulo operation to prevent overflow and ensure continuous reception.
+ * @note This function is interrupt-driven, meaning it runs automatically when new data is received over UART.
+ *       It should be as fast as possible to avoid interrupt delays.
  */
 void __UART__::isrRX(void)
 {
@@ -489,8 +570,15 @@ void __UART__::isrRX(void)
     this->rxHead = (this->rxHead + 1) % UART_RX_BUFFER_SIZE;
 }
 
-/*!
- * @brief  The UDRE ISR wrapper that will run iside the UDRE ISR
+/**
+ * @brief ISR (Interrupt Service Routine) for transmitting data on the UART.
+ * @details This function is triggered when the UART's transmit buffer is empty and ready to send more data.
+ *          If there is data remaining in the transmit buffer (`txBuffer`), it retrieves the next byte to be sent from the `txBuffer`
+ *          and writes it to the UART data register (UDR). The `txTail` pointer is then incremented in a circular manner.
+ *          If the transmit buffer is empty (i.e., all data has been sent), the UDRIE0 interrupt is disabled to prevent further interrupts 
+ *          until new data is available.
+ * @note This function ensures that UART data transmission occurs continuously without interruption, as long as there is data in the buffer.
+ *       It should be kept fast to avoid delaying the transmission process.
  */
 void __UART__::isrUDRE(void)
 {
